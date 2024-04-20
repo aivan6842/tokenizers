@@ -97,6 +97,9 @@ std::pair<int, int> BPETokenizer::get_most_occuring_byte_pair(std::vector<int> c
 
 std::vector<int> BPETokenizer::encode(std::string const text)
 {
+    if (!this->is_trained) {
+        throw std::bad_function_call();
+    }
     std::vector<int> tokens = std::vector<int>(text.begin(), text.end());
 
     while (tokens.size() >= 2) {
