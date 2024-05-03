@@ -15,7 +15,7 @@ BPETokenizer::BPETokenizer(uint32_t vocab_size, int eos_token, int bos_token, in
 }
 
 
-std::vector<int> BPETokenizer::merge_tokens(std::vector<int> & bytes, std::pair<int, int> byte_pair, int new_token_value)
+std::vector<int> BPETokenizer::merge_tokens(std::vector<int> & bytes, std::pair<int, int>& byte_pair, int new_token_value)
 {
     std::vector<int> new_tokens;
     int i = 0;
@@ -52,7 +52,7 @@ std::map<std::pair<int, int>, int> BPETokenizer::get_token_stats(std::vector<int
 }
 
 
-void BPETokenizer::train(std::string const text)
+void BPETokenizer::train(std::string const &text)
 {
     if (this->is_trained) { return; }
 
@@ -95,7 +95,7 @@ std::pair<int, int> BPETokenizer::get_most_occuring_byte_pair(std::vector<int> c
 }
 
 
-std::vector<int> BPETokenizer::encode(std::string const text)
+std::vector<int> BPETokenizer::encode(std::string const &text)
 {
     if (!this->is_trained) {
         throw std::bad_function_call();
@@ -130,7 +130,7 @@ std::vector<int> BPETokenizer::encode(std::string const text)
 }
 
 
-std::string BPETokenizer::decode(std::vector<int> const tokens)
+std::string BPETokenizer::decode(std::vector<int> const &tokens)
 {
     if (tokens[0] != this->bos_token or tokens[tokens.size() - 1] != this->eos_token) {
         throw std::invalid_argument("Invalid tokenization. Should begin with bos token and end in eos token");
@@ -154,3 +154,7 @@ std::string BPETokenizer::decode(std::vector<int> const tokens)
 
     return std::string(repr.begin(), repr.end());
 }
+
+bool BPETokenizer::tok_is_trained() {return is_trained; }
+
+std::map<int, std::vector<int> > BPETokenizer::get_vocab() {return vocab; }

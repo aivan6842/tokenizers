@@ -14,7 +14,7 @@ __version__ = "0.0.1"
 #   Sort input source files if you glob sources to ensure bit-for-bit
 #   reproducible builds (https://github.com/pybind/python_example/pull/53)
 
-cpp_files = ["src/mult.cpp", "src/binder.cpp"]
+cpp_files = ["src/BPETokenizer.cpp", "src/binder.cpp"]
 
 ext_modules = [
     Pybind11Extension(
@@ -41,5 +41,5 @@ setup(
     # level" feature, but in the future it may provide more features.
     cmdclass={"build_ext": build_ext},
     zip_safe=False,
-    python_requires=">=3.7",
+    python_requires=">=3.10",
 )

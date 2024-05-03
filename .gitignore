@@ -34,3 +34,6 @@
 # Python
 dist/
 *.egg-info/
+
+# vscode
+.vscode/
