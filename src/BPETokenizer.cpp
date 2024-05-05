@@ -2,6 +2,9 @@
 #include <algorithm>
 #include <map>
 #include <climits>
+#include <string>
+#include <locale>
+#include <codecvt>
 
 #include "BPETokenizer.hpp"
 
@@ -34,9 +37,11 @@ std::vector<int> BPETokenizer::merge_tokens(std::vector<int> & bytes, std::pair<
 }
 
 
-std::map<std::pair<int, int>, int> BPETokenizer::get_token_stats(std::vector<int> const &tokens) 
+std::pair<std::map<std::pair<int, int>, int>, std::vector<std::pair<int, int>>>
+BPETokenizer::get_token_stats(std::vector<int> const &tokens) 
 {
     std::map<std::pair<int, int>, int> stats{};
+    std::vector<std::pair<int, int>> order;
 
     for (int i = 0; i < int(tokens.size()) - 1; i++) {
         std::pair<int, int> byte_pair = {tokens[i], tokens[i+1]};
@@ -46,19 +51,27 @@ std::map<std::pair<int, int>, int> BPETokenizer::get_token_stats(std::vector<int
         } else {
             stats[byte_pair] = 1;
         }
+        order.push_back(byte_pair);
     }
 
-    return stats;
+    return std::pair(stats, order);
 }
 
 
-void BPETokenizer::train(std::string const &text)
+void BPETokenizer::train(std::u32string const &text)
 {
     if (this->is_trained) { return; }
 
     // start training
     int num_merges = this->vocab_size - this->vocab.size();
-    std::vector<int> bytes(text.begin(), text.end());
+    // std::vector<int> bytes(text.begin(), text.end());
+    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+    std::string utf8_bytes = converter.to_bytes(text);
+
+    std::vector<int> bytes;
+    for (unsigned char c : utf8_bytes) {
+        bytes.push_back(static_cast<int>(c));
+    }
 
     for (int i = 0; i < num_merges; i++) {
         int new_token_val = 256 + i; // 256 base vocab size
@@ -85,34 +98,51 @@ void BPETokenizer::train(std::string const &text)
 
 std::pair<int, int> BPETokenizer::get_most_occuring_byte_pair(std::vector<int> const &text_bytes)
 {
-    std::map<std::pair<int, int>, int> stats = get_token_stats(text_bytes);
+    std::pair<std::map<std::pair<int, int>, int>, std::vector<std::pair<int, int>>> stats_and_order = get_token_stats(text_bytes);
+    std::map<std::pair<int, int>, int> stats = stats_and_order.first;
+    std::vector<std::pair<int, int>> order = stats_and_order.second;
 
-    std::map<std::pair<int, int>, int>::iterator max_occuring_byte_pair = 
-        std::max_element(stats.begin(), stats.end(), 
-        [](const auto & a, const auto & b) {return a.second < b.second;});
+    std::pair<int, int> max_occuring_byte_pair;
+    int times = 0;
+    for (auto &elem: order) {
+        if (stats[elem] > times) {
+            times = stats[elem];
+            max_occuring_byte_pair = elem;
+        }
+    }
 
-    return max_occuring_byte_pair->first;
+    return max_occuring_byte_pair;
 }
 
 
-std::vector<int> BPETokenizer::encode(std::string const &text)
+std::vector<int> BPETokenizer::encode(std::u32string const &text)
 {
     if (!this->is_trained) {
         throw std::bad_function_call();
     }
-    std::vector<int> tokens = std::vector<int>(text.begin(), text.end());
+
+    // std::vector<int> tokens = std::vector<int>(text.begin(), text.end());
+    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> converter;
+    std::string utf8_bytes = converter.to_bytes(text);
+
+    std::vector<int> tokens;
+    for (unsigned char c : utf8_bytes) {
+        tokens.push_back(static_cast<int>(c));
+    }
 
     while (tokens.size() >= 2) {
-        std::map<std::pair<int, int>, int> stats = get_token_stats(tokens);
+        std::pair<std::map<std::pair<int, int>, int>, std::vector<std::pair<int, int>>> stats_and_order = get_token_stats(tokens);
+        std::map<std::pair<int, int>, int> stats = stats_and_order.first;
+        std::vector<std::pair<int, int>> order = stats_and_order.second;
 
         // find token pair that was earliest merged
         std::pair<int, int> earliest_merged_pair;
         int min_merges_val = INT_MAX;
-        for (auto &entry: stats) {
-            if (this->merges.count(entry.first)) {
-                if (this->merges[entry.first] < min_merges_val) {
-                    earliest_merged_pair = entry.first;
-                    min_merges_val = this->merges[entry.first];
+        for (auto &entry: order) {
+            if (this->merges.count(entry)) {
+                if (this->merges[entry] < min_merges_val) {
+                    earliest_merged_pair = entry;
+                    min_merges_val = this->merges[entry];
                 }
             }
         }
@@ -148,9 +178,6 @@ std::string BPETokenizer::decode(std::vector<int> const &tokens)
             repr.push_back(this->unk_token);
         }
     }
-
-    // null terminator
-    repr.push_back('\0');
 
     return std::string(repr.begin(), repr.end());
 }
