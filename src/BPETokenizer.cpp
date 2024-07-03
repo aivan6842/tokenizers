@@ -254,8 +254,8 @@ void BPETokenizer::save(const std::string &dir) {
     special_tokens_file.close();
 }
 
-BPETokenizer BPETokenizer::from_pretrained(const std::string &p) {
-    std::filesystem::path path = std::filesystem::path(p);
+BPETokenizer BPETokenizer::from_pretrained(const std::string &dir) {
+    std::filesystem::path path = std::filesystem::path(dir);
     
     if (!std::filesystem::is_directory(path)) {
         throw std::invalid_argument("Directory doesn't exist");

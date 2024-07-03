@@ -34,6 +34,6 @@ class BPETokenizer{
     std::string decode(std::vector<int> const &tokens);
     bool tok_is_trained();
     std::map<int, std::vector<int> > get_vocab();
-    void save(const std::string &p);
-    static BPETokenizer from_pretrained(const std::string &p);
+    void save(const std::string &dir);
+    static BPETokenizer from_pretrained(const std::string &dir);
 };

@@ -17,7 +17,8 @@ PYBIND11_MODULE(tokenizers_cpp, m) {
     tok.def("train", &BPETokenizer::train, py::arg("text"));
     tok.def("encode", &BPETokenizer::encode, py::arg("text"));
     tok.def("decode", &BPETokenizer::decode, py::arg("tokens"));
-
     tok.def("tok_is_trained", &BPETokenizer::tok_is_trained);
     tok.def("get_vocab", &BPETokenizer::get_vocab);
+    tok.def("save", &BPETokenizer::save, py::arg("dir"));
+    tok.def_static("from_pretrained", &BPETokenizer::from_pretrained, py::arg("dir"));
 }
