@@ -5,9 +5,15 @@
 #include <string>
 #include <locale>
 #include <codecvt>
+#include <fstream>
+#include <sstream>
 
 #include "BPETokenizer.hpp"
 
+
+std::string BPETokenizer::vocab_file_ext = "vocab.txt";
+std::string BPETokenizer::merges_file_ext = "merges.txt";
+std::string BPETokenizer::special_tokens_file_ext = "special_tokens.txt";
 
 BPETokenizer::BPETokenizer(uint32_t vocab_size, int eos_token, int bos_token, int unk_token) : 
     is_trained{false}, vocab_size{vocab_size}, eos_token{eos_token}, bos_token{bos_token}, unk_token{unk_token}
@@ -16,6 +22,20 @@ BPETokenizer::BPETokenizer(uint32_t vocab_size, int eos_token, int bos_token, in
         this->vocab[i] = std::vector<int>{i};
     }
 }
+
+BPETokenizer::BPETokenizer(std::map<int, std::vector<int> > vocab, 
+                           std::map<std::pair<int, int>, int> merges,
+                           int eos_token, 
+                           int bos_token,
+                           int unk_token) : 
+                           is_trained{true}, 
+                           vocab_size{uint32_t(vocab.size())},
+                           vocab{vocab},
+                           merges{merges},
+                           eos_token{eos_token}, 
+                           bos_token{bos_token}, 
+                           unk_token{unk_token}
+{}
 
 
 std::vector<int> BPETokenizer::merge_tokens(std::vector<int> & bytes, std::pair<int, int>& byte_pair, int new_token_value)
@@ -182,6 +202,122 @@ std::string BPETokenizer::decode(std::vector<int> const &tokens)
     return std::string(repr.begin(), repr.end());
 }
 
+
 bool BPETokenizer::tok_is_trained() {return is_trained; }
 
+
 std::map<int, std::vector<int> > BPETokenizer::get_vocab() {return vocab; }
+
+
+void BPETokenizer::save(const std::string &dir) {
+    std::filesystem::path dir_path = std::filesystem::path(dir);
+
+    if (!this->is_trained) {
+        throw std::bad_function_call();
+    }
+
+    bool created_dir = std::filesystem::create_directory(dir_path);
+
+    if (!created_dir) {
+        throw std::invalid_argument("Directory already exists.");
+    }
+
+    std::ofstream vocab_file, merges_file, special_tokens_file;
+    std::string vocab_file_path = (dir_path / BPETokenizer::vocab_file_ext).generic_string();
+    std::string merges_file_path = (dir_path / BPETokenizer::merges_file_ext).generic_string();
+    std::string special_tokens_file_path = (dir_path / BPETokenizer::special_tokens_file_ext).generic_string();
+
+    // serialize vocab and write to file
+    vocab_file.open(vocab_file_path);
+    for (auto const &entry : vocab) {
+        std::stringstream serialized_entry;
+        serialized_entry << entry.first;
+        for (int i = 0; i < int(entry.second.size()); i++ ) {
+            serialized_entry << " " << entry.second[i];
+        }
+        vocab_file << serialized_entry.str() << "\n";
+    }
+    vocab_file.close();
+
+    // serialze merges and write to file
+    merges_file.open(merges_file_path);
+    for (auto const &entry : merges) {
+        std::stringstream serialized_entry;
+        serialized_entry << entry.first.first << " " << entry.first.second << " " << entry.second << "\n";
+        merges_file << serialized_entry.str();
+    }
+    merges_file.close();
+
+    // serialize special tokens and write to file
+    special_tokens_file.open(special_tokens_file_path);
+    special_tokens_file << eos_token << " " << bos_token << " " << unk_token << "\n";
+    special_tokens_file.close();
+}
+
+BPETokenizer BPETokenizer::from_pretrained(const std::string &p) {
+    std::filesystem::path path = std::filesystem::path(p);
+    
+    if (!std::filesystem::is_directory(path)) {
+        throw std::invalid_argument("Directory doesn't exist");
+    }
+
+    int eos_token, bos_token, unk_token;
+    std::map<int, std::vector<int> > vocab;
+    std::map<std::pair<int, int>, int> merges;
+    
+    std::ifstream vocab_file, merges_file, special_tokens_file;
+    std::string vocab_file_path = (path / BPETokenizer::vocab_file_ext).generic_string();
+    std::string merges_file_path = (path / BPETokenizer::merges_file_ext).generic_string();
+    std::string special_tokens_file_path = (path / BPETokenizer::special_tokens_file_ext).generic_string(); 
+
+    // deserialize vocab
+    std::string line;
+    vocab_file.open(vocab_file_path);
+    while (std::getline(vocab_file, line)) {
+        std::istringstream iss(line);
+        int elem;
+        
+        // read first elem
+        iss >> elem;
+        int first = elem;
+
+        std::vector<int> vc;
+        while (iss >> elem) {
+            vc.push_back(elem);
+        }
+
+        vocab[first] = vc;
+    }
+
+    // deserialize merges
+    line.clear();
+    merges_file.open(merges_file_path);
+    while (std::getline(merges_file, line)) {
+        std::istringstream iss(line);
+        int first, second, third;
+
+        iss >> first;
+        iss >> second;
+        iss >> third;
+
+        merges[std::make_pair(first, second)] = third;
+    }
+
+    // deserialize special tokens
+    line.clear();
+    special_tokens_file.open(special_tokens_file_path);
+    std::getline(special_tokens_file, line);
+    std::istringstream iss(line);
+    iss >> eos_token;
+    iss >> bos_token;
+    iss >> unk_token;
+
+
+    return BPETokenizer(
+        vocab=vocab,
+        merges=merges,
+        eos_token=eos_token,
+        bos_token=bos_token,
+        unk_token=unk_token
+    );
+}

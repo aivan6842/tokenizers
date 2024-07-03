@@ -13,4 +13,10 @@ int main() {
     std::string inf_t = "Hello! This is my project on tokenizers!";
     std::u32string t(inf_t.begin(), inf_t.end());
     std::cout << tokenizer.decode(tokenizer.encode(t)) << std::endl;
+
+    std::string dir = "/home/alex/Desktop/cpp/tokenizers/test_tokenizer";
+    tokenizer.save(dir);
+    BPETokenizer loaded_tokenizer = BPETokenizer::from_pretrained(dir);
+    
+    std::cout << loaded_tokenizer.decode(loaded_tokenizer.encode(t)) << std::endl;
 }

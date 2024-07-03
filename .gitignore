@@ -37,3 +37,9 @@ dist/
 
 # vscode
 .vscode/
+
+training_text.txt
+
+test_tokenizer/
+
+min_bpe/__pycache__/
