@@ -8,5 +8,5 @@ I will be updating this repository as I make progress. My goals are to implement
 
 # Building the project
 I have provided a `main.cpp` file where I added a small example of how the tokenizer is used. You can use it as a starting point to run through the code. I have provided a `MakeFile` which builds the `main` executable and all the necessary dependencies. To build the executable simply execute
-```make main```. To clean up simply execute ```make clean```
+```make main```. To clean up simply execute ```make clean```.
 To install the python package simply use the provided `build.sh` script.
